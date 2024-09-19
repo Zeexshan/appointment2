@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Appointment Scheduler</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        h1, h2 {
+            color: #444;
+        }
+        form {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 40px;
+            width: 100%;
+            max-width: 400px;
+        }
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+        input[type="text"], input[type="datetime-local"], input[type="submit"] {
+            width: calc(100% - 22px);
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        input[type="submit"] {
+            background-color: #007BFF;
+            color: white;
+            cursor: pointer;
+            border: none;
+            transition: background-color 0.3s ease;
+        }
+        input[type="submit"]:hover {
+            background-color: #0056b3;
+        }
+        #doctorHomeScreen {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 600px;
+        }
+        .appointment {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 10px 0;
+            background-color: #fafafa;
+            border-radius: 4px;
+        }
+    </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const alarm = document.getElementById("alarmSound");
+            const unfor = document.getElementById("unforSound");
+            alarm.load(); // Preload the audio to ensure it is ready
+            unfor.load(); // Preload the audio to ensure it is ready
+
+            const startTime = 10; // Start time in hours (10:00 AM)
+            const endTime = 23;   // End time in hours (8:00 PM)
+            const appointmentInterval = 1; // Interval in hours (1 hour)
+
+            function validateForm() {
+                const now = new Date();
+                const firstName = document.getElementById("firstName").value;
+                const lastName = document.getElementById("lastName").value;
+                const phoneNumber = document.getElementById("phoneNumber").value;
+                const appointmentTime = new Date(document.getElementById("appointmentTime").value);
+
+                // Check if appointment time is within working hours
+                if (appointmentTime.getHours() < startTime || appointmentTime.getHours() >= endTime) {
+                    alert(`Working hours for Dr. Sanjay are from 10:00 AM to 8:00 PM.`);
+                    return false;
+                }
+
+                // Check if appointment overlaps with existing appointments
+                if (isAppointmentBooked(appointmentTime)) {
+                    playUnfor();
+                    alert(`An appointment is already booked at ${appointmentTime.toLocaleString()}. Please choose another time.`);
+                    return false;
+                }
+
+                if (!firstName || !lastName || !phoneNumber || !appointmentTime) {
+                    alert("Please fill out all fields.");
+                    return false;
+                }
+
+                scheduleAppointment(firstName, lastName, phoneNumber, appointmentTime);
+                return false;
+            }
+
+            function isAppointmentBooked(checkTime) {
+                const appointments = document.querySelectorAll(".appointment");
+                const checkTimeMs = checkTime.getTime(); // Convert checkTime to milliseconds
+                for (let i = 0; i < appointments.length; i++) {
+                    const appointmentTime = new Date(appointments[i].getAttribute("data-time"));
+                    const appointmentTimeMs = appointmentTime.getTime(); // Convert appointmentTime to milliseconds
+                    if (appointmentTimeMs === checkTimeMs) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            function scheduleAppointment(firstName, lastName, phoneNumber, appointmentTime) {
+                const doctorHomeScreen = document.getElementById("doctorHomeScreen");
+                const appointment = document.createElement("div");
+                appointment.className = "appointment";
+                appointment.setAttribute("data-time", appointmentTime);
+                appointment.innerHTML = `<strong>${firstName} ${lastName}</strong><br>Phone: ${phoneNumber}<br>Time: ${appointmentTime.toLocaleString()}`;
+                doctorHomeScreen.appendChild(appointment);
+
+                const timeUntilAppointment = appointmentTime - new Date();
+                setTimeout(() => {
+                    playAlarm().then(() => {
+                        alert(`Appointment with ${firstName} ${lastName} at ${appointmentTime.toLocaleString()} is starting now!`);
+                        stopAlarm();
+                    }).catch(error => {
+                        console.error("Playback failed:", error);
+                    });
+                }, timeUntilAppointment);
+            }
+
+            function playAlarm() {
+                return new Promise((resolve, reject) => {
+                    alarm.currentTime = 0;
+                    const playPromise = alarm.play();
+                    if (playPromise !== undefined) {
+                        playPromise.then(() => {
+                            console.log("Playback started successfully.");
+                            resolve();
+                        }).catch(error => {
+                            console.error("Playback failed:", error);
+                            reject(error);
+                        });
+                    } else {
+                        resolve();
+                    }
+                });
+            }
+
+            function playUnfor() {
+                unfor.currentTime = 0; 
+                const playPromise = unfor.play();
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        console.log("Unfor playback started successfully.");
+                    }).catch(error => {
+                        console.error("Unfor playback failed:", error);
+                    });
+                }
+            }
+
+            function stopAlarm() {
+                alarm.pause();
+                alarm.currentTime = 0;
+            }
+
+            window.validateForm = validateForm;
+        });
+    </script>
+</head>
+<body>
+    <h1>Schedule an Appointment</h1>
+    <form onsubmit="return validateForm()">
+        <label for="firstName">First Name:</label>
+        <input type="text" id="firstName" name="firstName" required>
+
+        <label for="lastName">Last Name:</label>
+        <input type="text" id="lastName" name="lastName" required>
+
+        <label for="phoneNumber">Phone Number:</label>
+        <input type="text" id="phoneNumber" name="phoneNumber" required>
+
+        <label for="appointmentTime">Appointment Time:</label>
+        <input type="datetime-local" id="appointmentTime" name="appointmentTime" required>
+
+        <input type="submit" value="Schedule Appointment">
+    </form>
+
+    <div id="doctorHomeScreen">
+        <h2>Doctor's Home Screen</h2>
+        <div id="appointments"></div>
+    </div>
+
+    <audio id="alarmSound" src="alarm.mp3" preload="auto"></audio>
+    <audio id="unforSound" src="unfor.mp3" preload="auto"></audio>
+</body>
+</html>
